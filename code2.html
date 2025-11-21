@@ -1,0 +1,755 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TasteOfPamuru.in - Order Online</title>
+    <!-- Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Firebase SDKs -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, collection, addDoc, onSnapshot, query, where, updateDoc, orderBy, serverTimestamp, setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Set log level to debug for development visibility
+        setLogLevel('debug');
+
+        // Global variables provided by the environment
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
+        let app, db, auth, currentUserId = 'anonymous';
+
+        // Initialize Firebase
+        if (Object.keys(firebaseConfig).length > 0) {
+            app = initializeApp(firebaseConfig);
+            db = getFirestore(app);
+            auth = getAuth(app);
+           
+            // Function to handle authentication
+            const authenticate = async () => {
+                try {
+                    if (initialAuthToken) {
+                        await signInWithCustomToken(auth, initialAuthToken);
+                        console.log("Signed in with custom token.");
+                    } else {
+                        await signInAnonymously(auth);
+                        console.log("Signed in anonymously.");
+                    }
+                } catch (error) {
+                    console.error("Firebase Auth Error:", error);
+                }
+            };
+           
+            // Listen for auth state change and finalize initialization
+            onAuthStateChanged(auth, (user) => {
+                if (user) {
+                    currentUserId = user.uid;
+                    console.log("Authentication successful. User ID:", currentUserId);
+                    window.firebaseInitialized(db, currentUserId, appId);
+                } else {
+                    console.log("No user signed in.");
+                    // If no token, sign in anonymously to get a UID for saving data
+                    if (!initialAuthToken) {
+                         authenticate();
+                    } else {
+                        window.firebaseInitialized(null, 'anonymous', appId); // Pass null if auth fails
+                    }
+                }
+            });
+
+            // Start authentication process
+            if (!auth.currentUser) {
+                authenticate();
+            }
+        } else {
+            console.error("Firebase configuration is missing. Data saving is disabled.");
+            window.firebaseInitialized(null, 'anonymous', appId);
+        }
+
+        // Masking function for privacy
+        window.maskPhoneNumber = (phone) => {
+            if (!phone || phone.length < 4) return '***********';
+            return '******' + phone.slice(-4);
+        };
+       
+    </script>
+   
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        /* Custom styles to enhance the food court look */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8f8f8;
+        }
+        .header-bg {
+            background: linear-gradient(135deg, #FF6B6B 0%, #FFB02E 100%);
+        }
+        .order-card {
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            transition: transform 0.2s;
+        }
+        .quantity-button {
+            width: 40px;
+            height: 40px;
+            font-size: 1.25rem;
+            line-height: 1;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background-color 0.15s;
+        }
+        .plus-btn {
+            background-color: #10B981; /* Green */
+        }
+        .minus-btn {
+            background-color: #F87171; /* Red */
+        }
+        /* Custom Modal Styles */
+        .modal-content {
+            background-color: white;
+            padding: 1.5rem;
+            border-radius: 0.75rem;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+            max-width: 90%;
+            width: 400px;
+        }
+    </style>
+</head>
+<body class="min-h-screen">
+
+    <div id="app" class="max-w-xl mx-auto p-4 md:p-6">
+       
+        <!-- Header Section -->
+        <header class="header-bg text-white p-6 rounded-xl mb-6 shadow-lg">
+            <h1 class="text-3xl font-bold mb-1">TasteOfPamuru.in</h1>
+            <p class="text-lg font-medium mb-1">Indian Food & Arabic Biriyani</p>
+            <p class="text-sm font-medium mb-1 opacity-95">CEO & Founder: Jameer Shaik, Phone: +91 9398442100</p>
+            <p class="text-sm opacity-90">Pamuru, Andhra Pradesh | Order Authentic Delicacies Now!</p>
+            <div class="mt-3 bg-white text-gray-800 text-xs font-semibold px-3 py-1.5 rounded-full inline-block shadow-md">
+                🛵 FREE Home Delivery!
+            </div>
+        </header>
+
+        <!-- Menu Section -->
+        <main id="menu-list" class="space-y-4 mb-8">
+            <h2 class="text-2xl font-bold text-gray-800 border-b pb-2 mb-4">Our Menu & Prices</h2>
+            <!-- Menu items will be injected here by JavaScript -->
+			<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Indian Food & Arabic Biriyani Menu</title>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #fff7e6;
+            margin: 0;
+            padding: 0;
+        }
+
+        header {
+            background: #d35400;
+            color: white;
+            padding: 20px;
+            text-align: center;
+            font-size: 28px;
+        }
+
+        .category-title {
+            font-size: 26px;
+            color: #d35400;
+            text-align: center;
+            margin-top: 30px;
+        }
+
+        /* Menu grid */
+        .menu-grid {
+            max-width: 500px;
+            margin: auto;
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 10px;
+            padding: 10px;
+        }
+
+        /* Menu card */
+        .card {
+            background: white;
+            padding: 15px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            transition: 0.2s;
+            cursor: pointer;
+        }
+
+        .card:hover {
+            transform: scale(1.03);
+        }
+
+        .card img {
+            width: 100%;
+            height: 160px;
+            object-fit: cover;
+            border-radius: 10px;
+        }
+
+        .card-title {
+            font-size: 20px;
+            margin: 10px 0 5px;
+            font-weight: bold;
+        }
+
+        .price {
+            color: green;
+            font-size: 18px;
+            margin-bottom: 10px;
+        }
+
+        .add-btn {
+            background: #d35400;
+            color: white;
+            padding: 8px 12px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+
+        /* Cart bubble */
+        #cart-count {
+            position: fixed;
+            right: 20px;
+            top: 20px;
+            background: #27ae60;
+            color: white;
+            padding: 10px 15px;
+            border-radius: 30px;
+            font-size: 18px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    Indian Food & Arabic Biriyani Menu
+</header>
+
+<!-- Cart counter -->
+<div id="cart-count">Cart: 0</div>
+
+<!-- Categories -->
+<h2 class="category-title">Food</h2>
+<div class="menu-grid" id="Food"></div>
+
+<h2 class="category-title">Curry</h2>
+<div class="menu-grid" id="curry"></div>
+
+<h2 class="category-title">Snacks</h2>
+<div class="menu-grid" id="snacks"></div>
+
+<script>
+    // MENU DATA (You can add or edit items here)
+    const menuData = {
+        Food: [
+            {
+                name: "Chicken Dum Biriyani",
+                price: 180,
+                img: "https://i.ibb.co/LDsLLfNh/Biriyani.webp"
+            },
+            {
+                name: "Mutton Biriyani (Sunday Special)",
+                price: 350,
+                img: "https://i.ibb.co/wrKsjPkG/Mutton-Biriyani.jpg"
+            },
+			{
+			    name: "Parota with Chicken Curry",
+                price: 70,
+                img: "https://i.ibb.co/RTk93YPP/parotta-chicken-curry.jpg"
+			},
+			{   name: "Kushka with Chicken curry",
+                price: 70,
+                img: "https://i.ibb.co/b9X5tQG/Kushka.webp"
+			}    
+        ],
+        curry: [
+            {
+                name: "Chicken Curry juicy",
+                price: 120,
+                img: "https://i.ibb.co/YsgG9qg/Chicken-curry-juicy.webp"
+            },
+            {
+                name: "Chicken Fry piece",
+                price: 150,
+                img: "https://i.ibb.co/39yVFv8p/Chicken-fry-piece.webp"
+            }
+        ],
+        snacks: [
+            {
+                name: "Chicken Pakoda",
+                price: 100,
+                img: "https://i.ibb.co/LzfJJTZY/Chicken-Pakoda.jpg"
+            },
+            {
+                name: "Bone less Chicken Pakoda",
+                price: 120,
+                img: "https://i.ibb.co/LzfJJTZY/Chicken-Pakoda.jpg"
+            },
+            {
+                name: "Lollypop  ",
+                price: 120,
+                img: "https://i.ibb.co/LzfJJTZY/Chicken-Pakoda.jpg"
+            },
+        ]
+    };
+
+    let cart = 0;
+
+    // Update cart bubble
+    function updateCart() {
+        document.getElementById("cart-count").textContent = `Cart: ${cart}`;
+    }
+
+    // Create card UI
+    function createCard(item) {
+        return `
+            <div class="card" onclick="alert('You clicked on ${item.name}')">
+                <img src="${item.img}" alt="${item.name}">
+                <div class="card-title">${item.name}</div>
+                <div class="price">₹${item.price}</div>
+                <button class="add-btn" onclick="event.stopPropagation(); addToCart('${item.name}', ${item.price});">
+                    Add to Cart
+                </button>
+            </div>
+        `;
+    }
+
+    // Add to cart function
+    function addToCart(name, price) {
+        cart++;
+        updateCart();
+        alert(`${name} added to cart!`);
+    }
+
+    // Insert menu into categories
+    function loadMenu() {
+        for (let category in menuData) {
+            const container = document.getElementById(category);
+            menuData[category].forEach(item => {
+                container.innerHTML += createCard(item);
+            });
+        }
+    }
+
+    loadMenu();
+
+</script>
+
+</body>
+</html>
+
+
+        </main>
+
+        <!-- Total and Customer Input Section -->
+        <section class="bg-white p-5 rounded-xl order-card border border-gray-100 mb-8">
+           
+            <h2 class="text-xl font-semibold mb-3 text-gray-700">Place Your Order</h2>
+           
+            <!-- Phone Number Input -->
+            <div class="mb-5">
+                <label for="customer-phone" class="block text-sm font-medium text-gray-700 mb-2">
+                    Your Contact Number (Required for Callback)
+                </label>
+                <input
+                    type="tel"
+                    id="customer-phone"
+                    placeholder="Enter 10 digit number"
+                    class="w-full p-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 transition duration-150"
+                    pattern="[0-9]{10}"
+                    maxlength="10"
+                    required
+                >
+            </div>
+
+            <!-- Delivery Address Input -->
+            <div class="mb-5">
+                <label for="delivery-address" class="block text-sm font-medium text-gray-700 mb-2">
+                    Full Delivery Address (Required)
+                </label>
+                <textarea
+                    id="delivery-address"
+                    rows="3"
+                    placeholder="House/Door No., Street Name, Landmark"
+                    class="w-full p-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 transition duration-150"
+                    required
+                ></textarea>
+            </div>
+
+            <!-- Total Display -->
+            <div class="flex justify-between items-center border-t border-gray-200 pt-3 mb-4">
+                <span class="text-lg font-bold text-gray-800">Total Payable:</span>
+                <span id="order-total" class="text-2xl font-extrabold text-orange-600">₹0.00</span>
+            </div>
+
+            <!-- Place Order Button -->
+            <button
+                id="place-order-btn"
+                onclick="window.placeOrder()"
+                class="w-full bg-green-600 text-white py-3 rounded-lg text-lg font-bold hover:bg-green-700 transition duration-200 focus:outline-none focus:ring-4 focus:ring-green-500 focus:ring-opacity-50"
+            >
+                Place Order Now
+            </button>
+           
+            <!-- Status Message Area (for confirmation/errors) -->
+            <div id="status-message" class="mt-4 p-3 rounded-lg text-center hidden" role="alert"></div>
+
+        </section>
+
+        <!-- Orders Dashboard (For Business Owner) -->
+        <section class="mt-8">
+            <h2 class="text-2xl font-bold text-gray-800 border-b pb-2 mb-4">New Orders Dashboard (Admin View)</h2>
+            <p id="dashboard-info" class="text-sm text-gray-500 mb-4">Listening for new orders... (User ID: [Your User ID])</p>
+            <div id="orders-dashboard" class="space-y-4">
+                <!-- Real-time orders will be injected here -->
+                <p id="no-orders" class="text-center text-gray-500 p-4 bg-white rounded-xl hidden">No new orders yet!</p>
+            </div>
+           
+            <!-- Custom Confirmation Modal (Hidden by default) -->
+            <div id="confirm-modal" class="fixed inset-0 bg-gray-600 bg-opacity-75 hidden flex items-center justify-center p-4 z-50">
+                <div class="modal-content">
+                    <h3 class="text-xl font-bold mb-4 text-gray-800">Confirm Order Processed</h3>
+                    <p class="mb-6 text-gray-700">Are you sure you have called the customer and processed this order?</p>
+                    <div class="flex justify-end space-x-3">
+                        <button onclick="window.closeConfirmModal()" class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition">Cancel</button>
+                        <button id="confirm-processed-btn" class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition">Yes, Processed</button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Hidden Admin Info -->
+        <div id="admin-info" class="mt-8 text-xs text-gray-400 p-2 border-t"></div>
+    </div>
+
+    <!-- JavaScript Logic -->
+    <script type="module">
+        import { getFirestore, doc, collection, addDoc, onSnapshot, query, where, updateDoc, orderBy, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Global state for Firebase objects
+        let db, currentUserId, appId;
+        let orderToProcessId = null; // To store the ID of the order being confirmed
+
+        // Menu Data
+        const menuItems = [
+            { id: 'arabic-biriyani', name: 'Arabic Biriyani (Full)', price: 150, description: 'Authentic spiced rice with succulent chicken.' },
+            { id: 'chicken-parota', name: 'Chicken Parota (Set of 2)', price: 70, description: 'Flaky Parota served with flavorful chicken gravy.' },
+            { id: 'special-dosa', name: 'Special Dosa', price: 40, description: 'Crispy Dosa with signature filling and chicken gravy.' },
+            { id: 'plain-parota', name: 'Plain Parota (Each)', price: 30, description: 'Soft, layered parota.' },
+        ];
+
+        let quantities = {}; // Stores { itemId: quantity }
+       
+        // DOM Elements
+        const menuList = document.getElementById('menu-list');
+        const orderTotalDisplay = document.getElementById('order-total');
+        const phoneInput = document.getElementById('customer-phone');
+        const addressInput = document.getElementById('delivery-address'); // New Address Input
+        const statusMessage = document.getElementById('status-message');
+        const placeOrderBtn = document.getElementById('place-order-btn');
+        const ordersDashboard = document.getElementById('orders-dashboard');
+        const dashboardInfo = document.getElementById('dashboard-info');
+        const noOrdersMessage = document.getElementById('no-orders');
+        const adminInfo = document.getElementById('admin-info');
+        const confirmModal = document.getElementById('confirm-modal');
+        const confirmProcessedBtn = document.getElementById('confirm-processed-btn');
+
+
+        // --- FIREBASE INITIALIZATION & REAL-TIME LISTENER ---
+       
+        // This function is called from the module script after successful authentication
+        window.firebaseInitialized = (firestore, userId, appIdentifier) => {
+            db = firestore;
+            currentUserId = userId;
+            appId = appIdentifier;
+
+            adminInfo.textContent = `User ID: ${currentUserId} | App ID: ${appId}`;
+           
+            if (db) {
+                dashboardInfo.textContent = `Listening for NEW orders... (Admin ID: ${currentUserId})`;
+                startOrderListener();
+            } else {
+                dashboardInfo.textContent = `Error: Database connection failed. Orders will not be saved.`;
+            }
+            renderMenu(); // Render menu regardless of DB status
+        };
+
+        // Starts the real-time listener for new orders
+        function startOrderListener() {
+            // Path: /artifacts/{appId}/public/data/orders
+            const ordersPath = `artifacts/${appId}/public/data/orders`;
+            const ordersRef = collection(db, ordersPath);
+           
+            // Query for orders with status "New", sorted by timestamp (newest first)
+            const q = query(ordersRef, where('status', '==', 'New'), orderBy('timestamp', 'desc'));
+
+            onSnapshot(q, (snapshot) => {
+                ordersDashboard.innerHTML = '';
+                const orders = [];
+                snapshot.forEach(doc => {
+                    const data = doc.data();
+                    if (data.timestamp && typeof data.timestamp.toDate === 'function') {
+                        data.timestamp = data.timestamp.toDate().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+                    }
+                    orders.push({ id: doc.id, ...data });
+                });
+
+                if (orders.length === 0) {
+                    noOrdersMessage.classList.remove('hidden');
+                } else {
+                    noOrdersMessage.classList.add('hidden');
+                    orders.forEach(order => renderOrder(order));
+                }
+            }, (error) => {
+                console.error("Error listening to orders:", error);
+                dashboardInfo.textContent = `ERROR: Failed to load real-time orders. Check console.`;
+            });
+        }
+
+        // Renders a single order item in the dashboard
+        function renderOrder(order) {
+            const orderElement = document.createElement('div');
+            orderElement.className = 'bg-yellow-50 border-l-4 border-red-500 p-4 rounded-lg shadow-sm';
+           
+            const itemsList = order.items.map(item =>
+                `<li class="text-sm text-gray-700">${item.qty} x ${item.name} (₹${item.price})</li>`
+            ).join('');
+
+            orderElement.innerHTML = `
+                <div class="flex justify-between items-start mb-2">
+                    <div>
+                        <p class="text-xs font-semibold text-red-600 mb-1">NEW ORDER: ${order.timestamp}</p>
+                        <p class="text-xl font-bold text-gray-900 mb-1">📞 ${window.maskPhoneNumber(order.customer_phone)}</p>
+                        <p class="text-sm font-medium mb-2">
+                            <span class="font-bold text-gray-700">Address:</span> ${order.delivery_address}
+                        </p>
+                    </div>
+                    <p class="text-sm font-medium mb-2">Total: <span class="text-green-600 font-extrabold text-lg">₹${order.total_amount.toFixed(2)}</span></p>
+                </div>
+               
+                <h4 class="text-sm font-semibold mb-2 text-gray-800">Order Items:</h4>
+                <ul class="list-disc list-inside space-y-1 pl-2 text-sm">
+                    ${itemsList}
+                </ul>
+               
+                <div class="mt-4 pt-3 border-t border-gray-200">
+                    <button
+                        class="w-full bg-red-500 text-white py-2 rounded-lg text-sm font-bold hover:bg-red-600 transition duration-150"
+                        onclick="window.openConfirmModal('${order.id}')"
+                    >
+                        Mark as Processed (Called Customer)
+                    </button>
+                </div>
+            `;
+            ordersDashboard.appendChild(orderElement);
+        }
+
+        // --- MODAL & ORDER PROCESSING LOGIC ---
+       
+        window.openConfirmModal = (orderId) => {
+            orderToProcessId = orderId;
+            confirmModal.classList.remove('hidden');
+            document.body.style.overflow = 'hidden'; // Prevent scrolling
+        };
+
+        window.closeConfirmModal = () => {
+            orderToProcessId = null;
+            confirmModal.classList.add('hidden');
+            document.body.style.overflow = '';
+        };
+
+        confirmProcessedBtn.onclick = async () => {
+            if (orderToProcessId) {
+                await window.markOrderAsProcessed(orderToProcessId);
+            }
+            window.closeConfirmModal();
+        };
+
+
+        window.markOrderAsProcessed = async (orderId) => {
+            if (!db) {
+                console.error("Database not connected.");
+                return;
+            }
+
+            try {
+                // Path: /artifacts/{appId}/public/data/orders/{orderId}
+                const docRef = doc(db, `artifacts/${appId}/public/data/orders`, orderId);
+               
+                // Update status to Processed
+                await updateDoc(docRef, {
+                    status: "Processed",
+                    processed_at: serverTimestamp(),
+                    processed_by_uid: currentUserId,
+                });
+                console.log(`Order ${orderId} marked as Processed.`);
+
+            } catch (error) {
+                console.error("Error marking order as processed:", error);
+            }
+        };
+
+
+        // --- ORDERING LOGIC ---
+
+        // Renders the initial menu and quantity controls
+        function renderMenu() {
+            menuList.innerHTML = '<h2 class="text-2xl font-bold text-gray-800 border-b pb-2 mb-4">Our Menu & Prices</h2>';
+            menuItems.forEach(item => {
+                quantities[item.id] = quantities[item.id] || 0;
+
+                const itemHtml = `
+                    <div class="order-card bg-white p-4 rounded-xl flex items-center justify-between border-l-4 border-orange-500">
+                        <!-- Item Details -->
+                        <div class="flex-grow">
+                            <h3 class="text-lg font-bold text-gray-900">${item.name}</h3>
+                            <p class="text-sm text-gray-500 mb-1">${item.description}</p>
+                            <span class="text-xl font-semibold text-gray-800">₹${item.price}</span>
+                        </div>
+
+                        <!-- Quantity Control -->
+                        <div class="flex items-center space-x-2 ml-4">
+                            <button
+                                class="quantity-button minus-btn text-white font-bold shadow-md"
+                                onclick="window.updateQuantity('${item.id}', -1)"
+                                aria-label="Decrease quantity of ${item.name}"
+                            >-</button>
+                            <span id="qty-${item.id}" class="text-xl font-mono w-8 text-center">${quantities[item.id]}</span>
+                            <button
+                                class="quantity-button plus-btn text-white font-bold shadow-md"
+                                onclick="window.updateQuantity('${item.id}', 1)"
+                                aria-label="Increase quantity of ${item.name}"
+                            >+</button>
+                        </div>
+                    </div>
+                `;
+                menuList.insertAdjacentHTML('beforeend', itemHtml);
+            });
+            calculateTotal();
+        }
+
+        // Updates the quantity of a specific item
+        window.updateQuantity = (itemId, change) => {
+            let currentQty = quantities[itemId];
+            const newQty = Math.max(0, currentQty + change);
+           
+            if (newQty !== currentQty) {
+                quantities[itemId] = newQty;
+                document.getElementById(`qty-${itemId}`).textContent = newQty;
+                calculateTotal();
+            }
+        }
+
+        // Calculates and displays the total order price
+        function calculateTotal() {
+            let total = 0;
+            menuItems.forEach(item => {
+                const qty = quantities[item.id];
+                total += qty * item.price;
+            });
+            orderTotalDisplay.textContent = `₹${total.toFixed(2)}`;
+            return total;
+        }
+
+        // Shows a status message (error or success)
+        function showStatus(message, type) {
+            statusMessage.textContent = message;
+            statusMessage.classList.remove('hidden', 'bg-red-100', 'text-red-800', 'bg-green-100', 'text-green-800');
+            if (type === 'error') {
+                statusMessage.classList.add('bg-red-100', 'text-red-800');
+            } else if (type === 'success') {
+                statusMessage.classList.add('bg-green-100', 'text-green-800');
+            }
+        }
+       
+        // Handles placing the order and saving to Firestore
+        window.placeOrder = async () => {
+            const total = calculateTotal();
+            const phoneNumber = phoneInput.value.trim();
+            const deliveryAddress = addressInput.value.trim(); // Get Address
+           
+            const orderItems = menuItems.map(item => ({
+                name: item.name,
+                qty: quantities[item.id],
+                price: item.price,
+            })).filter(item => item.qty > 0);
+
+            // --- Validation ---
+            if (!phoneNumber || phoneNumber.length !== 10 || !/^\d{10}$/.test(phoneNumber)) {
+                showStatus("Please enter a valid 10-digit contact number.", 'error');
+                phoneInput.focus();
+                return;
+            }
+           
+            if (deliveryAddress.length < 10) {
+                 showStatus("Please enter a complete delivery address (House No., Street, Landmark).", 'error');
+                addressInput.focus();
+                return;
+            }
+
+            if (total === 0) {
+                showStatus("Please add at least one item to your order.", 'error');
+                return;
+            }
+           
+            if (!db) {
+                showStatus("Order system is offline. Please call the number in the header to place your order.", 'error');
+                return;
+            }
+
+            // Disable button during submission
+            placeOrderBtn.disabled = true;
+            placeOrderBtn.textContent = 'Submitting...';
+            statusMessage.classList.add('hidden');
+
+            const orderData = {
+                customer_phone: phoneNumber,
+                delivery_address: deliveryAddress, // Save Address
+                total_amount: total,
+                items: orderItems,
+                timestamp: serverTimestamp(), // Use Firestore server timestamp
+                location: "Pamuru, Andhra Pradesh",
+                status: "New", // Initial status
+                placed_by_uid: currentUserId,
+            };
+           
+            try {
+                // Path: /artifacts/{appId}/public/data/orders
+                const ordersPath = `artifacts/${appId}/public/data/orders`;
+                await addDoc(collection(db, ordersPath), orderData);
+
+                showStatus(`Order Placed! Total: ₹${total.toFixed(2)}. Your order is being processed. We will call you on ${phoneNumber} if we need further confirmation. Thank you!`, 'success');
+               
+                // Reset the form after successful order
+                quantities = {};
+                phoneInput.value = '';
+                addressInput.value = ''; // Reset Address
+                renderMenu();
+               
+            } catch (error) {
+                console.error("Firestore Order Submission Error:", error);
+                showStatus("Order failed. Please try again or call us directly. (System Error)", 'error');
+            } finally {
+                placeOrderBtn.disabled = false;
+                placeOrderBtn.textContent = 'Place Order Now';
+            }
+        }
+
+        // Initial render logic will wait for firebaseInitialized to be called
+    </script>
+</body>
+</html>
